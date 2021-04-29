@@ -226,7 +226,7 @@ if __name__ == "__main__":
         seed = 2019
         config["optimizer"]["lr_param"]["lr"] = 0.001  # optimal parameters
         config["network"]["params"]["class_num"] = 65
-    elif config["dataset"] == "office":
+    elif config["dataset"] == "office31":
         seed = 2019
         if ("webcam" in args.s_dset_path and "amazon" in args.t_dset_path) or \
                 ("dslr" in args.s_dset_path and "amazon" in args.t_dset_path):
