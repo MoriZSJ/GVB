@@ -6,32 +6,37 @@ import math
 import torch.nn.functional as F
 import pdb
 
+
 class Myloss(nn.Module):
-    def __init__(self,epsilon=1e-8):
-        super(Myloss,self).__init__()
+    def __init__(self, epsilon=1e-8):
+        super(Myloss, self).__init__()
         self.epsilon = epsilon
         return
-    def forward(self,input_, label, weight):
-        entropy = - label * torch.log(input_ + self.epsilon) -(1 - label) * torch.log(1 - input_ + self.epsilon)
-        return torch.sum(entropy * weight)/2 
-    
+
+    def forward(self, input_, label, weight):
+        entropy = - label * torch.log(input_ + self.epsilon) - (1 - label) * torch.log(1 - input_ + self.epsilon)
+        return torch.sum(entropy * weight)/2
+
+
 def Entropy(input_):
     bs = input_.size(0)
     epsilon = 1e-5
-    entropy = -input_ *torch.log(input_ + epsilon)
+    entropy = -input_ * torch.log(input_ + epsilon)
     entropy = torch.sum(entropy, dim=1)
-    return entropy 
+    return entropy
+
 
 def grl_hook(coeff):
     def fun1(grad):
         return -coeff*grad.clone()
     return fun1
 
-def GVB(input_list, ad_net, coeff=None, myloss=Myloss(),GVBD=False):
+
+def GVB(input_list, ad_net, coeff=None, myloss=Myloss(), GVBD=False):
     softmax_output = input_list[0]
     focals = input_list[1].reshape(-1)
-    ad_out,fc_out = ad_net(softmax_output)
-    if GVBD==1:
+    ad_out, fc_out = ad_net(softmax_output)
+    if GVBD == 1:
         ad_out = nn.Sigmoid()(ad_out - fc_out)
     else:
         ad_out = nn.Sigmoid()(ad_out)
@@ -53,6 +58,5 @@ def GVB(input_list, ad_net, coeff=None, myloss=Myloss(),GVBD=False):
     target_mask[0:softmax_output.size(0)//2] = 0
     target_weight = entropy*target_mask
     weight = source_weight / torch.sum(source_weight).detach().item() + \
-             target_weight / torch.sum(target_weight).detach().item()
-    return myloss(ad_out,dc_target,weight.view(-1, 1)), mean_entropy, gvbg, gvbd 
-
+        target_weight / torch.sum(target_weight).detach().item()
+    return myloss(ad_out, dc_target, weight.view(-1, 1)), mean_entropy, gvbg, gvbd

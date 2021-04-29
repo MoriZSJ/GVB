@@ -67,7 +67,7 @@ def image_classification_test(loader, model, bridge=True, test_10crop=True):
 
 
 def train(config):
-    ## set pre-process
+    # set pre-process
     prep_dict = {}
     dsets = {}
     dset_loaders = {}
@@ -89,56 +89,56 @@ def train(config):
     else:
         prep_dict["test"] = prep.image_test(**config["prep"]['params'])
 
-    ## prepare data
+    # prepare data
     train_bs = data_config["source"]["batch_size"]
     test_bs = data_config["test"]["batch_size"]
-    dsets["source"] = ImageList(open(data_config["source"]["list_path"]).readlines(), \
+    dsets["source"] = ImageList(open(data_config["source"]["list_path"]).readlines(),
                                 transform=prep_dict["source"])
-    dset_loaders["source"] = DataLoader(dsets["source"], batch_size=train_bs, \
-            shuffle=True, num_workers=4, drop_last=True)
-    dsets["target"] = ImageList(open(data_config["target"]["list_path"]).readlines(), \
+    dset_loaders["source"] = DataLoader(dsets["source"], batch_size=train_bs,
+                                        shuffle=True, num_workers=4, drop_last=True)
+    dsets["target"] = ImageList(open(data_config["target"]["list_path"]).readlines(),
                                 transform=prep_dict["target"])
-    dset_loaders["target"] = DataLoader(dsets["target"], batch_size=train_bs, \
-            shuffle=True, num_workers=4, drop_last=True)
+    dset_loaders["target"] = DataLoader(dsets["target"], batch_size=train_bs,
+                                        shuffle=True, num_workers=4, drop_last=True)
 
     if prep_config["test_10crop"]:
         for i in range(10):
-            dsets["test"] = [ImageList(open(data_config["test"]["list_path"]).readlines(), \
-                                transform=prep_dict["test"][i]) for i in range(10)]
-            dset_loaders["test"] = [DataLoader(dset, batch_size=test_bs, \
-                                shuffle=False, num_workers=4) for dset in dsets['test']]
+            dsets["test"] = [ImageList(open(data_config["test"]["list_path"]).readlines(),
+                                       transform=prep_dict["test"][i]) for i in range(10)]
+            dset_loaders["test"] = [DataLoader(dset, batch_size=test_bs,
+                                               shuffle=False, num_workers=4) for dset in dsets['test']]
     else:
-        dsets["test"] = ImageList(open(data_config["test"]["list_path"]).readlines(), \
-                                transform=prep_dict["test"])
-        dset_loaders["test"] = DataLoader(dsets["test"], batch_size=test_bs, \
-                                shuffle=False, num_workers=4)
+        dsets["test"] = ImageList(open(data_config["test"]["list_path"]).readlines(),
+                                  transform=prep_dict["test"])
+        dset_loaders["test"] = DataLoader(dsets["test"], batch_size=test_bs,
+                                          shuffle=False, num_workers=4)
 
     class_num = config["network"]["params"]["class_num"]
 
-    ## set base network
+    # set base network
     net_config = config["network"]
     base_network = net_config["name"](**net_config["params"])
     base_network = base_network.cuda()
 
-    ## add additional network for some methods
+    # add additional network for some methods
     if config["loss"]["random"]:
         random_layer = network.RandomLayer([base_network.output_num(), class_num], config["loss"]["random_dim"])
         ad_net = network.AdversarialNetwork(config["loss"]["random_dim"], 1024)
     else:
         random_layer = None
-        if config['method']  == 'DANN':
-            ad_net = network.AdversarialNetwork(base_network.output_num() , 1024)
+        if config['method'] == 'DANN':
+            ad_net = network.AdversarialNetwork(base_network.output_num(), 1024)
         else:
             ad_net = network.AdversarialNetwork(base_network.output_num() * class_num, 1024)
     if config["loss"]["random"]:
         random_layer.cuda()
     ad_net = ad_net.cuda()
     parameter_list = base_network.get_parameters() + ad_net.get_parameters()
- 
-    ## set optimizer
+
+    # set optimizer
     optimizer_config = config["optimizer"]
-    optimizer = optimizer_config["type"](parameter_list, \
-                    **(optimizer_config["optim_params"]))
+    optimizer = optimizer_config["type"](parameter_list,
+                                         **(optimizer_config["optim_params"]))
     param_lr = []
     for param_group in optimizer.param_groups:
         param_lr.append(param_group["lr"])
@@ -149,9 +149,8 @@ def train(config):
     if len(gpus) > 1:
         ad_net = nn.DataParallel(ad_net, device_ids=[int(i) for i in gpus])
         base_network = nn.DataParallel(base_network, device_ids=[int(i) for i in gpus])
-        
 
-    ## train   
+    # train
     len_train_source = len(dset_loaders["source"])
     len_train_target = len(dset_loaders["target"])
     transfer_loss_value = classifier_loss_value = total_loss_value = 0.0
@@ -159,8 +158,8 @@ def train(config):
     for i in range(config["num_iterations"]):
         if i % config["test_interval"] == config["test_interval"] - 1:
             base_network.train(False)
-            temp_acc = image_classification_test(dset_loaders, \
-                base_network, bridge = config['GVBG'], test_10crop=prep_config["test_10crop"])
+            temp_acc = image_classification_test(dset_loaders,
+                                                 base_network, bridge=config['GVBG'], test_10crop=prep_config["test_10crop"])
             temp_model = nn.Sequential(base_network)
             if temp_acc > best_acc:
                 best_acc = temp_acc
@@ -170,11 +169,11 @@ def train(config):
             config["out_file"].flush()
             print(log_str)
         if i % config["snapshot_interval"] == 0:
-            torch.save(nn.Sequential(base_network), osp.join(config["output_path"], \
-                "iter_{:05d}_model.pth.tar".format(i)))
+            torch.save(nn.Sequential(base_network), osp.join(config["output_path"],
+                                                             "iter_{:05d}_model.pth.tar".format(i)))
 
-        loss_params = config["loss"]                  
-        ## train one iter
+        loss_params = config["loss"]
+        # train one iter
         base_network.train(True)
         ad_net.train(True)
         optimizer = lr_scheduler(optimizer, i, **schedule_param)
@@ -186,13 +185,13 @@ def train(config):
         inputs_source, labels_source = iter_source.next()
         inputs_target, labels_target = iter_target.next()
         inputs_source, inputs_target, labels_source = inputs_source.cuda(), inputs_target.cuda(), labels_source.cuda()
-        features_source, outputs_source,gvbg_source = base_network(inputs_source)
-        features_target, outputs_target,gvbg_target = base_network(inputs_target)
+        features_source, outputs_source, gvbg_source = base_network(inputs_source)
+        features_target, outputs_target, gvbg_target = base_network(inputs_target)
         features = torch.cat((features_source, features_target), dim=0)
         outputs = torch.cat((outputs_source, outputs_target), dim=0)
-        if config['GVBG'] == True:           
-            outputs_source -= gvbg_source 
-            outputs_target -= gvbg_target 
+        if config['GVBG'] == True:
+            outputs_source -= gvbg_source
+            outputs_target -= gvbg_target
             gvbg = torch.mean(torch.abs(gvbg_source))/2 + torch.mean(torch.abs(gvbg_target))/2
         else:
             gvbg = 0
@@ -201,25 +200,25 @@ def train(config):
         softmax_tgt = nn.Softmax(dim=1)(outputs_target)
         softmax_out = torch.cat((softmax_src, softmax_tgt), dim=0)
 
-        if config['method'] == 'CDAN+E':           
+        if config['method'] == 'CDAN+E':
             entropy = loss.Entropy(softmax_out)
-            transfer_loss,gvbd = loss.CDAN([features, softmax_out], ad_net, entropy, network.calc_coeff(i), random_layer,GVBD = config['GVBD'])
-        elif config['method'] == 'DANN+E':          
+            transfer_loss, gvbd = loss.CDAN([features, softmax_out], ad_net, entropy, network.calc_coeff(i), random_layer, GVBD=config['GVBD'])
+        elif config['method'] == 'DANN+E':
             entropy = loss.Entropy(softmax_out)
-            transfer_loss,gvbd = loss.DANN(features, ad_net, entropy, network.calc_coeff(i))
-        elif config['method']  == 'CDAN':
-            transfer_loss,gvbd = loss.CDAN([features, softmax_out], ad_net, None, None, random_layer)
-        elif config['method']  == 'DANN':
-            transfer_loss,gvbd = loss.DANN(features, ad_net)
+            transfer_loss, gvbd = loss.DANN(features, ad_net, entropy, network.calc_coeff(i))
+        elif config['method'] == 'CDAN':
+            transfer_loss, gvbd = loss.CDAN([features, softmax_out], ad_net, None, None, random_layer)
+        elif config['method'] == 'DANN':
+            transfer_loss, gvbd = loss.DANN(features, ad_net)
         else:
             raise ValueError('Method cannot be recognized.')
 
         classifier_loss = nn.CrossEntropyLoss()(outputs_source, labels_source)
-        total_loss = loss_params["trade_off"] * transfer_loss + classifier_loss + gvbg+ gvbd*config['GVBD']
+        total_loss = loss_params["trade_off"] * transfer_loss + classifier_loss + gvbg + gvbd*config['GVBD']
         total_loss.backward()
         optimizer.step()
         if i % config['print_num'] == 0:
-            log_str = "iter: {:05d}, classification: {:.5f}, transfer: {:.5f}, gvbg: {:.5f}, gvbd:{:.5f}".format(i, classifier_loss, transfer_loss, gvbg,gvbd)
+            log_str = "iter: {:05d}, classification: {:.5f}, transfer: {:.5f}, gvbg: {:.5f}, gvbd:{:.5f}".format(i, classifier_loss, transfer_loss, gvbg, gvbd)
             config["out_file"].write(log_str+"\n")
             config["out_file"].flush()
             if config['show']:
@@ -227,11 +226,13 @@ def train(config):
     torch.save(best_model, osp.join(config["output_path"], "best_model.pth.tar"))
     return best_acc
 
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Conditional Domain Adversarial Network')
-    parser.add_argument('method', type=str, default='CDAN+E', choices=['CDAN', 'CDAN+E', 'DANN','DANN+E', 'SVD', 'SSVD'])
+    parser.add_argument('method', type=str, default='CDAN+E', choices=['CDAN', 'CDAN+E', 'DANN', 'DANN+E', 'SVD', 'SSVD'])
     parser.add_argument('--gpu_id', type=str, nargs='?', default='0', help="device id to run")
-    parser.add_argument('--net', type=str, default='ResNet50', choices=["ResNet18", "ResNet34", "ResNet50", "ResNet101", "ResNet152", "VGG11", "VGG13", "VGG16", "VGG19", "VGG11BN", "VGG13BN", "VGG16BN", "VGG19BN"])
+    parser.add_argument('--net', type=str, default='ResNet50', choices=["ResNet18", "ResNet34", "ResNet50", "ResNet101",
+                                                                        "ResNet152", "VGG11", "VGG13", "VGG16", "VGG19", "VGG11BN", "VGG13BN", "VGG16BN", "VGG19BN"])
     parser.add_argument('--dset', type=str, default='office', choices=['office', 'image-clef', 'visda', 'office-home'], help="The dataset or source dataset used")
     parser.add_argument('--s_dset_path', type=str, default='../data/office/amazon_list.txt', help="The source dataset path list")
     parser.add_argument('--t_dset_path', type=str, default='../data/office/webcam_list.txt', help="The target dataset path list")
@@ -270,56 +271,56 @@ if __name__ == "__main__":
     if not osp.exists(config["output_path"]):
         os.mkdir(config["output_path"])
 
-    config["prep"] = {"test_10crop":False, 'params':{"resize_size":256, "crop_size":224, 'alexnet':False}}
-    config["loss"] = {"trade_off":args.trade_off}
+    config["prep"] = {"test_10crop": False, 'params': {"resize_size": 256, "crop_size": 224, 'alexnet': False}}
+    config["loss"] = {"trade_off": args.trade_off}
     if "AlexNet" in args.net:
         config["prep"]['params']['alexnet'] = True
         config["prep"]['params']['crop_size'] = 227
-        config["network"] = {"name":network.AlexNetFc, \
-            "params":{"use_bottleneck":True, "bottleneck_dim":256, "new_cls":True} }
+        config["network"] = {"name": network.AlexNetFc,
+                             "params": {"use_bottleneck": True, "bottleneck_dim": 256, "new_cls": True}}
     elif "ResNet" in args.net:
-        config["network"] = {"name":network.ResNetFc, \
-            "params":{"resnet_name":args.net, "use_bottleneck":True, "bottleneck_dim":256, "new_cls":True} }
+        config["network"] = {"name": network.ResNetFc,
+                             "params": {"resnet_name": args.net, "use_bottleneck": True, "bottleneck_dim": 256, "new_cls": True}}
     elif "VGG" in args.net:
-        config["network"] = {"name":network.VGGFc, \
-            "params":{"vgg_name":args.net, "use_bottleneck":True, "bottleneck_dim":256, "new_cls":True} }
+        config["network"] = {"name": network.VGGFc,
+                             "params": {"vgg_name": args.net, "use_bottleneck": True, "bottleneck_dim": 256, "new_cls": True}}
     config["loss"]["random"] = args.random
     config["loss"]["random_dim"] = 1024
 
-    config["optimizer"] = {"type":optim.SGD, "optim_params":{'lr':args.lr, "momentum":0.9, \
-                           "weight_decay":0.0005, "nesterov":True}, "lr_type":"inv", \
-                           "lr_param":{"lr":args.lr, "gamma":0.001, "power":0.75} }
+    config["optimizer"] = {"type": optim.SGD, "optim_params": {'lr': args.lr, "momentum": 0.9,
+                                                               "weight_decay": 0.0005, "nesterov": True}, "lr_type": "inv",
+                           "lr_param": {"lr": args.lr, "gamma": 0.001, "power": 0.75}}
 
     config["dataset"] = args.dset
-    config["data"] = {"source":{"list_path":args.s_dset_path, "batch_size":args.batch_size}, \
-                      "target":{"list_path":args.t_dset_path, "batch_size":args.batch_size}, \
-                      "test":{"list_path":args.t_dset_path, "batch_size":args.batch_size}}
+    config["data"] = {"source": {"list_path": args.s_dset_path, "batch_size": args.batch_size},
+                      "target": {"list_path": args.t_dset_path, "batch_size": args.batch_size},
+                      "test": {"list_path": args.t_dset_path, "batch_size": args.batch_size}}
 
     if config["dataset"] == "office":
         if ("amazon" in args.s_dset_path and "webcam" in args.t_dset_path) or \
            ("webcam" in args.s_dset_path and "dslr" in args.t_dset_path) or \
            ("webcam" in args.s_dset_path and "amazon" in args.t_dset_path) or \
            ("dslr" in args.s_dset_path and "amazon" in args.t_dset_path):
-            config["optimizer"]["lr_param"]["lr"] = 0.001 # optimal parameters
+            config["optimizer"]["lr_param"]["lr"] = 0.001  # optimal parameters
         elif ("amazon" in args.s_dset_path and "dslr" in args.t_dset_path) or \
              ("dslr" in args.s_dset_path and "webcam" in args.t_dset_path):
-            config["optimizer"]["lr_param"]["lr"] = 0.0003 # optimal parameters       
-        config["network"]["params"]["class_num"] = 31 
+            config["optimizer"]["lr_param"]["lr"] = 0.0003  # optimal parameters
+        config["network"]["params"]["class_num"] = 31
     elif config["dataset"] == "image-clef":
-        config["optimizer"]["lr_param"]["lr"] = 0.001 # optimal parameters
+        config["optimizer"]["lr_param"]["lr"] = 0.001  # optimal parameters
         config["network"]["params"]["class_num"] = 12
     elif config["dataset"] == "visda":
-        config["optimizer"]["lr_param"]["lr"] = 0.0003 # optimal parameters
+        config["optimizer"]["lr_param"]["lr"] = 0.0003  # optimal parameters
         config["network"]["params"]["class_num"] = 12
         config['loss']["trade_off"] = 1.0
     elif config["dataset"] == "office-home":
-        config["optimizer"]["lr_param"]["lr"] = 0.001 # optimal parameters
+        config["optimizer"]["lr_param"]["lr"] = 0.001  # optimal parameters
         config["network"]["params"]["class_num"] = 65
     else:
         raise ValueError('Dataset cannot be recognized. Please define your own dataset here.')
 
-    if args.seed ==0:
-        seed = random.randint(1,10000)
+    if args.seed == 0:
+        seed = random.randint(1, 10000)
     else:
         seed = args.seed
     print(seed)

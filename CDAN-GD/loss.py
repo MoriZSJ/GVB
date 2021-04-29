@@ -6,27 +6,30 @@ import math
 import torch.nn.functional as F
 import pdb
 
+
 def Entropy(input_):
     bs = input_.size(0)
     epsilon = 1e-5
     entropy = -input_ * torch.log(input_ + epsilon)
     entropy = torch.sum(entropy, dim=1)
-    return entropy 
+    return entropy
+
 
 def grl_hook(coeff):
     def fun1(grad):
         return -coeff*grad.clone()
     return fun1
 
-def CDAN(input_list, ad_net, entropy=None, coeff=None, random_layer=None, GVBD = False):
+
+def CDAN(input_list, ad_net, entropy=None, coeff=None, random_layer=None, GVBD=False):
     softmax_output = input_list[1].detach()
     feature = input_list[0]
     if random_layer is None:
         op_out = torch.bmm(softmax_output.unsqueeze(2), feature.unsqueeze(1))
-        ad_out,ad_fc = ad_net(op_out.view(-1, softmax_output.size(1) * feature.size(1)))
+        ad_out, ad_fc = ad_net(op_out.view(-1, softmax_output.size(1) * feature.size(1)))
     else:
         random_out = random_layer.forward([feature, softmax_output])
-        ad_out,ad_fc = ad_net(random_out.view(-1, random_out.size(1)))       
+        ad_out, ad_fc = ad_net(random_out.view(-1, random_out.size(1)))
     if GVBD:
         ad_out = nn.Sigmoid()(ad_out - ad_fc)
     else:
@@ -43,13 +46,14 @@ def CDAN(input_list, ad_net, entropy=None, coeff=None, random_layer=None, GVBD =
         target_mask[0:feature.size(0)//2] = 0
         target_weight = entropy*target_mask
         weight = source_weight / torch.sum(source_weight).detach().item() + \
-                 target_weight / torch.sum(target_weight).detach().item()
-        return torch.sum(weight.view(-1, 1) * nn.BCELoss(reduction='none')(ad_out, dc_target)) / torch.sum(weight).detach().item() , torch.mean(torch.abs(ad_fc))
+            target_weight / torch.sum(target_weight).detach().item()
+        return torch.sum(weight.view(-1, 1) * nn.BCELoss(reduction='none')(ad_out, dc_target)) / torch.sum(weight).detach().item(), torch.mean(torch.abs(ad_fc))
     else:
         return nn.BCELoss()(ad_out, dc_target), 0
 
-def DANN(features, ad_net, entropy=None, coeff=None, GVBD = False):
-    ad_out,ad_fc = ad_net(features)
+
+def DANN(features, ad_net, entropy=None, coeff=None, GVBD=False):
+    ad_out, ad_fc = ad_net(features)
     if GVBD:
         ad_out = nn.Sigmoid()(ad_out-ad_fc)
     else:
@@ -66,8 +70,7 @@ def DANN(features, ad_net, entropy=None, coeff=None, GVBD = False):
         target_mask[0:feature.size(0)//2] = 0
         target_weight = entropy*target_mask
         weight = source_weight / torch.sum(source_weight).detach().item() + \
-                 target_weight / torch.sum(target_weight).detach().item()
-        return torch.sum(weight.view(-1, 1) * nn.BCELoss(reduction='none')(ad_out, dc_target)) / torch.sum(weight).detach().item() , torch.mean(torch.abs(ad_fc))
+            target_weight / torch.sum(target_weight).detach().item()
+        return torch.sum(weight.view(-1, 1) * nn.BCELoss(reduction='none')(ad_out, dc_target)) / torch.sum(weight).detach().item(), torch.mean(torch.abs(ad_fc))
     else:
         return nn.BCELoss()(ad_out, dc_target), torch.mean(torch.abs(ad_fc))
-

@@ -5,15 +5,18 @@ from PIL import Image, ImageOps
 import numbers
 import torch
 
+
 class ResizeImage():
     def __init__(self, size):
-      if isinstance(size, int):
-        self.size = (int(size), int(size))
-      else:
-        self.size = size
+        if isinstance(size, int):
+            self.size = (int(size), int(size))
+        else:
+            self.size = size
+
     def __call__(self, img):
-      th, tw = self.size
-      return img.resize((th, tw))
+        th, tw = self.size
+        return img.resize((th, tw))
+
 
 class RandomSizedCrop(object):
     """Crop the given PIL.Image to random size and aspect ratio.
@@ -51,7 +54,7 @@ class Normalize(object):
             self.mean = mean
         else:
             arr = np.load(meanfile)
-            self.mean = torch.from_numpy(arr.astype('float32')/255.0)[[2,1,0],:,:]
+            self.mean = torch.from_numpy(arr.astype('float32')/255.0)[[2, 1, 0], :, :]
 
     def __call__(self, tensor):
         """
@@ -64,7 +67,6 @@ class Normalize(object):
         for t, m in zip(tensor, self.mean):
             t.sub_(m)
         return tensor
-
 
 
 class PlaceCrop(object):
@@ -106,6 +108,7 @@ class ForceFlip(object):
         """
         return img.transpose(Image.FLIP_LEFT_RIGHT)
 
+
 class CenterCrop(object):
     """Crops the given PIL.Image at the center.
     Args:
@@ -136,37 +139,39 @@ class CenterCrop(object):
 
 
 def image_train(resize_size=256, crop_size=224, alexnet=False):
-  normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
-                                   std=[0.229, 0.224, 0.225])
-  return  transforms.Compose([
-        transforms.Resize((resize_size,resize_size)),
+    normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
+                                     std=[0.229, 0.224, 0.225])
+    return transforms.Compose([
+        transforms.Resize((resize_size, resize_size)),
         transforms.RandomHorizontalFlip(),
         transforms.RandomResizedCrop(crop_size),
         transforms.ToTensor(),
         normalize
     ])
+
+
 def image_target(resize_size=256, crop_size=224, alexnet=False):
-  normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
-                                   std=[0.229, 0.224, 0.225])
-  return  transforms.Compose([
-        transforms.Resize((resize_size,resize_size)),
-        transforms.RandomCrop(224),#TODO
+    normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
+                                     std=[0.229, 0.224, 0.225])
+    return transforms.Compose([
+        transforms.Resize((resize_size, resize_size)),
+        transforms.RandomCrop(224),  # TODO
         transforms.RandomHorizontalFlip(),
         transforms.ToTensor(),
         normalize
     ])
 
-def image_test(resize_size=256, crop_size=224, alexnet=False):
-  normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
-                                   std=[0.229, 0.224, 0.225])
-  start_first = 0
-  start_center = (resize_size - crop_size - 1) / 2
-  start_last = resize_size - crop_size - 1
- 
-  return transforms.Compose([
-    transforms.Resize((resize_size,resize_size)),
-    transforms.CenterCrop(224),
-    transforms.ToTensor(),
-    normalize
-  ])
 
+def image_test(resize_size=256, crop_size=224, alexnet=False):
+    normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
+                                     std=[0.229, 0.224, 0.225])
+    start_first = 0
+    start_center = (resize_size - crop_size - 1) / 2
+    start_last = resize_size - crop_size - 1
+
+    return transforms.Compose([
+        transforms.Resize((resize_size, resize_size)),
+        transforms.CenterCrop(224),
+        transforms.ToTensor(),
+        normalize
+    ])
