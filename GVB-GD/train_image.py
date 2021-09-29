@@ -18,6 +18,7 @@ import random
 import pdb
 import math
 from distutils.version import LooseVersion
+import time
 
 
 def image_classification_test(loader, model, gvbg=False):
@@ -103,6 +104,7 @@ def train(config):
     len_train_target = len(dset_loaders["target"])
     transfer_loss_value = classifier_loss_value = total_loss_value = 0.0
     best_acc = 0.0
+    start_time = time.time()
     for i in range(config["num_iterations"]):
         # test
         if i % config["test_interval"] == config["test_interval"] - 1:
@@ -154,6 +156,8 @@ def train(config):
             log_str = "iter: {:05d}, transferloss: {:.5f}, classifier_loss: {:.5f}, mean entropy:{:.5f}, gvbg:{:.5f}, gvbd:{:.5f}".format(i, transfer_loss, classifier_loss, mean_entropy, gvbg, gvbd)
             config["out_file"].write(log_str+"\n")
             config["out_file"].flush()
+            end_time = time.time()
+            print("cost time: ", end_time - start_time)
             # print(log_str)
 
         total_loss.backward()
@@ -243,14 +247,15 @@ if __name__ == "__main__":
         config["network"]["params"]["class_num"] = 12
     else:
         raise ValueError('Dataset cannot be recognized. Please define your own dataset here.')
-    print(seed)
-    torch.manual_seed(seed)
-    torch.cuda.manual_seed(seed)
-    torch.cuda.manual_seed_all(seed)
-    np.random.seed(seed)
-    random.seed(seed)
-    torch.backends.cudnn.deterministic = True
-    torch.backends.cudnn.benchmark = False
+    print('start training...')
+    # print(seed)
+    # torch.manual_seed(seed)
+    # torch.cuda.manual_seed(seed)
+    # torch.cuda.manual_seed_all(seed)
+    # np.random.seed(seed)
+    # random.seed(seed)
+    # torch.backends.cudnn.deterministic = True
+    # torch.backends.cudnn.benchmark = False
 
     config["out_file"].write(str(config))
     config["out_file"].flush()

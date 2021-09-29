@@ -13,7 +13,7 @@ The following are the command for each task. The GVBG and GVBD represents the pa
 
 Office-31
 ```
-python train_image.py --gpu_id 0 --GVBG 1 --GVBD 1 --num_iterations 8004  --dset office --s_dset_path data/office/amazon_list.txt --t_dset_path data/office/dslr_list.txt --test_interval 500 --output_dir gvbgd/adn
+python GVB-GD/train_image.py --gpu_id 0 --GVBG 1 --GVBD 1 --num_iterations 8004  --dset office31 --s_dset_path data/office/amazon_list.txt --t_dset_path data/office/dslr_list.txt --test_interval 500 --output_dir gvbgd/adn
 ```
 
 Office-Home
